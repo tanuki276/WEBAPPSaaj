@@ -18,7 +18,7 @@
     </a>
     <div class="header-actions">
       <span id="authStatus" class="status-pill"><span class="status-dot"></span>接続準備中</span>
-      <button id="settingsToggle" class="icon-button" type="button">設定</button><button id="historyToggle" class="icon-button" type="button" aria-label="履歴を開く">履歴</button>
+      <button id="accountToggle" class="icon-button" type="button">アカウント</button><button id="settingsToggle" class="icon-button" type="button">設定</button><button id="historyToggle" class="icon-button" type="button" aria-label="履歴を開く">履歴</button>
     </div>
   </header>
 
@@ -98,6 +98,25 @@
   </aside>
 
   <footer><span>CookAi Web</span><a href="/privacy">プライバシー</a><span>AI生成結果は参考情報です</span></footer>
+  <dialog id="accountDialog" aria-labelledby="accountHeading">
+    <div class="drawer-head"><h2 id="accountHeading">アカウント</h2><button id="accountClose" class="icon-button" type="button">閉じる</button></div>
+    <p id="accountStatus">接続を確認しています</p>
+    <div id="accountCredentials">
+      <p class="account-help">登録するとゲストの履歴を保存できます。登録済みの方はAndroid版と同じメールアドレスでログインしてください。</p>
+      <label for="accountEmail">メールアドレス</label><input id="accountEmail" type="email" autocomplete="email" required maxlength="254">
+      <label for="accountPassword">パスワード</label><input id="accountPassword" type="password" autocomplete="current-password" required>
+      <button class="primary-button" type="button" data-account-action="login">ログインして履歴を引き継ぐ</button>
+      <button class="secondary-button" type="button" data-account-action="register">新規登録して履歴を保存</button>
+      <button class="text-button" type="button" data-account-action="reset">パスワードを忘れた場合</button>
+      <p class="account-help">新規登録のパスワードは6文字以上です。未登録のままブラウザのデータを削除すると、ゲスト履歴は復元できません。<a href="/privacy">プライバシー</a></p>
+    </div>
+    <button id="syncButton" class="primary-button" type="button" data-account-action="sync" hidden>履歴を同期する</button>
+    <button id="logoutButton" class="secondary-button" type="button" data-account-action="logout" hidden>ログアウト</button>
+    <p id="accountProgress" hidden>通信が終わるまでお待ちください。</p>
+    <p id="accountMessage" role="status" aria-live="polite"></p>
+    <p class="account-help">ログイン後の履歴はクラウドへ保存され、同じアカウントのAndroid版・Web版で共有されます。調理設定はこのブラウザ内に保存します。</p>
+  </dialog>
+  <script src="/account.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

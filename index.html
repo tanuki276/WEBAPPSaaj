@@ -14,18 +14,18 @@
   <header class="site-header">
     <a class="brand" href="/" aria-label="CookAi ホーム">
       <span class="brand-mark" aria-hidden="true">C</span>
-      <span><strong>CookAi</strong><small>AI Recipe Studio</small></span>
+      <span><strong>CookAi</strong><small>あるもので、おいしく。</small></span>
     </a>
     <div class="header-actions">
       <span id="authStatus" class="status-pill"><span class="status-dot"></span>接続準備中</span>
-      <button id="historyToggle" class="icon-button" type="button" aria-label="履歴を開く">履歴</button>
+      <button id="settingsToggle" class="icon-button" type="button">設定</button><button id="historyToggle" class="icon-button" type="button" aria-label="履歴を開く">履歴</button>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <p class="eyebrow">COOK WITH WHAT YOU HAVE</p>
-      <h1>冷蔵庫から、<br><em>今日の一皿。</em></h1>
+      <p class="eyebrow">今日の一皿をつくる</p>
+      <h1>使いたい食材から、今日のレシピ。</h1>
       <p class="lead">手元の食材と、あなたの調理スタイルを伝えるだけ。CookAiが日本語で、今つくれるレシピをひとつ提案します。</p>
     </section>
 
@@ -33,19 +33,19 @@
       <form id="recipeForm" class="composer-card">
         <div class="section-heading">
           <span class="section-number">01</span>
-          <div><h2>食材を入力</h2><p>冷蔵庫にあるものを、カンマや改行で入力してください。</p></div>
+          <div><h2>使いたい食材</h2><p>冷蔵庫にあるものを、カンマや改行で入力してください。</p></div>
         </div>
 
         <label class="field-label" for="ingredients">食材</label>
         <textarea id="ingredients" maxlength="1600" rows="5" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
         <div class="field-meta">
-          <label class="check-row"><input id="useAll" type="checkbox" checked><span>入力した食材をできるだけ全部使う</span></label>
+          <label class="check-row"><input id="useAll" type="checkbox" checked><span>入力した食材をすべて使う</span></label>
           <span id="ingredientCount">0 / 1600</span>
         </div>
 
         <div class="section-heading compact">
           <span class="section-number">02</span>
-          <div><h2>仕上がりを選ぶ</h2><p>指定しない項目はAIにおまかせできます。</p></div>
+          <div><h2>今回のレシピ</h2><p>指定しない項目はAIにおまかせできます。</p></div>
         </div>
 
         <div class="select-grid">
@@ -66,9 +66,10 @@
           <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
         </details>
 
+        <label class="field-label" for="instructions">追加指示</label><textarea id="instructions" rows="3" maxlength="2000" placeholder="例：子ども向け、洗い物を少なく、辛くしない"></textarea>
         <div id="formError" class="form-error" role="alert" hidden></div>
         <div class="generate-row">
-          <button id="generateButton" class="primary-button" type="submit"><span class="button-label">レシピを考えてもらう</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+          <button id="generateButton" class="primary-button" type="submit"><span class="button-label">レシピを生成する</span><span class="button-arrow" aria-hidden="true">↗</span></button>
           <button id="stopButton" class="secondary-button" type="button" hidden>生成を停止</button>
         </div>
         <p class="privacy-note">生成内容はCookAiのAIルーターへ送信されます。AIの提案は、アレルギーや加熱状態などを必ずご自身で確認してください。</p>
@@ -76,7 +77,7 @@
 
       <aside class="result-card" aria-live="polite">
         <div class="result-head">
-          <div><p class="eyebrow">YOUR RECIPE</p><h2 id="resultTitle">レシピがここに届きます</h2></div>
+          <div><p class="eyebrow">できあがり</p><h2 id="resultTitle">レシピがここに届きます</h2></div>
           <div class="result-actions"><button id="copyButton" class="icon-button" type="button" disabled>コピー</button><button id="shareButton" class="icon-button" type="button" disabled>共有</button></div>
         </div>
         <div id="resultPlaceholder" class="result-placeholder"><div class="plate" aria-hidden="true"><span></span></div><p>食材と好みを入力して、<br>生成ボタンを押してください。</p></div>

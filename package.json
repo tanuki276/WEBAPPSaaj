@@ -1,0 +1,12 @@
+{
+  "name": "cookai-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CookAi web edition",
+  "scripts": {
+    "check": "node --check app.js && node --check api/generate.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

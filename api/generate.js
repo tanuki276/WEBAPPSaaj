@@ -3,6 +3,19 @@ const DEFAULT_WORKER_URL = 'https://liefantidia2-ai-router.light06120602.workers
 // The Vercel function budget is 180s; the browser waits 135s.
 export const UPSTREAM_TIMEOUT_MS = 120000;
 
+// Kept on the server so older clients also receive the recipe-quality requirements.
+export const RECIPE_REQUIREMENTS = `【レシピの品質条件】
+料理初心者が再現できる日本語のレシピを作成してください。短くするために分量・下準備・味付けを省略しないでください。
+・人数と調理時間（下準備を含む目安）を明記。人数・食材量が未指定なら2人分の提案量であることを明示し、指定があれば優先してください。
+・「材料」に全食材、調味料、油、水を使用量と単位（g、ml、個、大さじ、小さじ等）付きで列挙。基本の味付けを「適量」「お好み」だけで済ませず、まず入れる量と追加調整を分けてください。
+・「下準備」で洗う・皮をむく・切る等の必要な作業と切る大きさを具体的に説明してください。
+・「作り方」は番号付きで、器具、油の量、材料を入れる順番、火加減、各加熱工程の時間の目安と見た目等の確認方法を記載。調味料は名前・量・入れるタイミングまで説明してください。
+・「火が通るまで炒める」だけで終えず、時間は食材の量・厚さや器具で変わる目安とし、完成の確認方法も示してください。非加熱料理に不要な加熱工程を作らないでください。
+・「コツ・注意点」で焦げそうなときの火加減など、初心者向けの失敗を防ぐ具体策を示してください。
+・材料欄と手順を照合し、材料の使い忘れ・手順だけに出る食材や調味料・味付けの抜けを修正してから回答してください。
+・アレルギー、食事制限、使用可能な調味料・器具を優先。条件を満たせないときは理由と必要な確認を説明し、無理な代替や条件違反のレシピを作らないでください。
+・食用か不明な食材、野生採取品、昆虫などで食用の流通品か・加工状態が不明な場合は、確認事項を先に説明し、安全性や加熱条件を推測して調理手順を断定しないでください。`;
+
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -30,7 +43,7 @@ export default async function handler(request, response) {
   try {
     const upstream = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth },
-      body: JSON.stringify({ ingredients, constraints }), signal: controller.signal
+      body: JSON.stringify({ ingredients, constraints: [constraints, RECIPE_REQUIREMENTS].filter(Boolean).join('\n\n') }), signal: controller.signal
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {

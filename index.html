@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f7f3ea" />
+  <meta name="description" content="冷蔵庫にある食材から、あなた向けのレシピをAIが提案するCookAi Web版。" />
+  <title>CookAi — 冷蔵庫から、今日の一皿。</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="CookAi ホーム">
+      <span class="brand-mark" aria-hidden="true">C</span>
+      <span><strong>CookAi</strong><small>AI Recipe Studio</small></span>
+    </a>
+    <div class="header-actions">
+      <span id="authStatus" class="status-pill"><span class="status-dot"></span>接続準備中</span>
+      <button id="historyToggle" class="icon-button" type="button" aria-label="履歴を開く">履歴</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">COOK WITH WHAT YOU HAVE</p>
+      <h1>冷蔵庫から、<br><em>今日の一皿。</em></h1>
+      <p class="lead">手元の食材と、あなたの調理スタイルを伝えるだけ。CookAiが日本語で、今つくれるレシピをひとつ提案します。</p>
+    </section>
+
+    <section class="workspace" aria-label="レシピ生成">
+      <form id="recipeForm" class="composer-card">
+        <div class="section-heading">
+          <span class="section-number">01</span>
+          <div><h2>食材を入力</h2><p>冷蔵庫にあるものを、カンマや改行で入力してください。</p></div>
+        </div>
+
+        <label class="field-label" for="ingredients">食材</label>
+        <textarea id="ingredients" maxlength="1600" rows="5" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
+        <div class="field-meta">
+          <label class="check-row"><input id="useAll" type="checkbox" checked><span>入力した食材をできるだけ全部使う</span></label>
+          <span id="ingredientCount">0 / 1600</span>
+        </div>
+
+        <div class="section-heading compact">
+          <span class="section-number">02</span>
+          <div><h2>仕上がりを選ぶ</h2><p>指定しない項目はAIにおまかせできます。</p></div>
+        </div>
+
+        <div class="select-grid">
+          <label>主食の分類<select id="type"><option>特になし</option><option>ご飯類</option><option>麺類</option><option>パン類</option><option>その他</option></select></label>
+          <label>難易度<select id="difficulty"><option>指定なし</option><option>初心者 (簡単)</option><option>中級者 (普通)</option><option>上級者 (挑戦的)</option></select></label>
+          <label>ジャンル<select id="genre"><option>指定なし</option><option>和食</option><option>洋食</option><option>中華</option><option>エスニック</option><option>創作・無国籍</option></select></label>
+          <label>調理時間<select id="time"><option>指定なし</option><option>15分以内 (速攻)</option><option>30分以内 (標準)</option><option>1時間以内 (じっくり)</option><option>なし</option></select></label>
+          <label>食事スタイル<select id="diet"><option>指定なし</option><option>ベジタリアン</option><option>低カロリー・ダイエット</option><option>低糖質・ケトジェニック</option><option>辛さ控えめ</option></select></label>
+        </div>
+
+        <details class="preferences" id="preferencesPanel">
+          <summary><span>いつもの調理設定</span><small id="preferencesSummary">未登録 · 設定すると次回から入力不要</small></summary>
+          <div class="preferences-grid">
+            <label>避ける食材・アレルギー<textarea id="allergies" rows="2" maxlength="400" placeholder="例：えび、落花生"></textarea></label>
+            <label>使える調味料<textarea id="seasonings" rows="2" maxlength="400" placeholder="例：塩、しょうゆ、みそ、砂糖"></textarea></label>
+            <label>使える調理方法・器具<textarea id="methods" rows="2" maxlength="400" placeholder="例：フライパン、電子レンジ、炊飯器"></textarea></label>
+          </div>
+          <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
+        </details>
+
+        <div id="formError" class="form-error" role="alert" hidden></div>
+        <div class="generate-row">
+          <button id="generateButton" class="primary-button" type="submit"><span class="button-label">レシピを考えてもらう</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+          <button id="stopButton" class="secondary-button" type="button" hidden>生成を停止</button>
+        </div>
+        <p class="privacy-note">生成内容はCookAiのAIルーターへ送信されます。AIの提案は、アレルギーや加熱状態などを必ずご自身で確認してください。</p>
+      </form>
+
+      <aside class="result-card" aria-live="polite">
+        <div class="result-head">
+          <div><p class="eyebrow">YOUR RECIPE</p><h2 id="resultTitle">レシピがここに届きます</h2></div>
+          <div class="result-actions"><button id="copyButton" class="icon-button" type="button" disabled>コピー</button><button id="shareButton" class="icon-button" type="button" disabled>共有</button></div>
+        </div>
+        <div id="resultPlaceholder" class="result-placeholder"><div class="plate" aria-hidden="true"><span></span></div><p>食材と好みを入力して、<br>生成ボタンを押してください。</p></div>
+        <div id="loadingState" class="loading-state" hidden><div class="loader" aria-hidden="true"><i></i><i></i><i></i></div><p>レシピを組み立てています</p><small>食材と条件を読みながら、一皿にまとめています。</small></div>
+        <article id="recipeResult" class="recipe-result" hidden></article>
+      </aside>
+    </section>
+  </main>
+
+  <aside id="historyDrawer" class="history-drawer" aria-hidden="true">
+    <div class="drawer-backdrop" data-close-history></div>
+    <section class="drawer-panel" aria-label="レシピ履歴">
+      <div class="drawer-head"><div><p class="eyebrow">RECENT RECIPES</p><h2>履歴</h2></div><button class="icon-button" type="button" data-close-history>閉じる</button></div>
+      <label class="search-box"><span>検索</span><input id="historySearch" type="search" placeholder="料理名・食材・本文"></label>
+      <div id="historyList" class="history-list"></div>
+      <div class="drawer-footer"><button id="clearHistory" class="danger-button" type="button">履歴をすべて削除</button></div>
+    </section>
+  </aside>
+
+  <footer><span>CookAi Web</span><a href="/privacy">プライバシー</a><span>AI生成結果は参考情報です</span></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>

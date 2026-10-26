@@ -26,11 +26,11 @@
     <section class="hero">
       <p class="eyebrow">今日の一皿をつくる</p>
       <h1>使いたい食材から、今日のレシピ。</h1>
-      <p class="lead">手元の食材と、あなたの調理スタイルを伝えるだけ。CookAiが日本語で、今つくれるレシピをひとつ提案します。</p>
+      <p class="lead">食材を入力して、レシピを生成。好みや予算も指定できます。</p>
     </section>
 
     <section class="workspace" aria-label="レシピ生成">
-      <div id="usageStatus" role="status">利用残数を確認しています…</div><button type="button" id="refreshUsage">残数を更新</button>
+      <div class="usage-bar"><div id="usageStatus" role="status">利用残数を確認しています…</div><button type="button" id="refreshUsage">残数を更新</button></div>
       <form id="recipeForm" class="composer-card">
         <div class="section-heading">
           <span class="section-number">01</span>
@@ -38,13 +38,13 @@
         </div>
 
         <label class="field-label" for="ingredients">食材</label>
-        <textarea id="ingredients" maxlength="1600" rows="5" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
+        <textarea id="ingredients" maxlength="1600" rows="3" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
         <div class="field-meta">
           <label class="check-row"><input id="useAll" type="checkbox" checked><span>入力した食材をすべて使う</span></label>
           <span id="ingredientCount">0 / 1600</span>
         </div>
 
-        <div class="section-heading compact">
+        <details class="recipe-options"><summary>料理の条件を選ぶ <small>時間・ジャンルなど</small></summary><div class="section-heading compact">
           <span class="section-number">02</span>
           <div><h2>今回のレシピ</h2><p>指定しない項目はAIにおまかせできます。</p></div>
         </div>
@@ -57,7 +57,7 @@
           <label>食事スタイル<select id="diet"><option>指定なし</option><option>ベジタリアン</option><option>低カロリー・ダイエット</option><option>低糖質・ケトジェニック</option><option>辛さ控えめ</option></select></label>
         </div>
 
-        <details class="preferences" id="preferencesPanel">
+        </details><details class="preferences" id="preferencesPanel">
           <summary><span>いつもの調理設定</span><small id="preferencesSummary">未登録 · 設定すると次回から入力不要</small></summary>
           <div class="preferences-grid">
             <label>避ける食材・アレルギー<textarea id="allergies" rows="2" maxlength="400" placeholder="例：えび、落花生"></textarea></label>

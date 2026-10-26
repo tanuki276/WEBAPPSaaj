@@ -27,3 +27,24 @@ test('timeout is returned as a useful 504 response without exposing internal err
   try { const res = response(); await handler(request, res); assert.equal(res.statusCode, 504); assert.match(res.data.error, /時間がかかっています/); }
   finally { [global.fetch, global.setTimeout, global.clearTimeout] = originals; }
 });
+
+test('empty bearer tokens are rejected without contacting the router', async () => {
+  const original = global.fetch;
+  global.fetch = () => { throw new Error('must not fetch'); };
+  try {
+    for (const authorization of ['Bearer ', 'Bearer    ']) {
+      const res = response();
+      await handler({ ...request, headers: { authorization } }, res);
+      assert.equal(res.statusCode, 401);
+    }
+  } finally { global.fetch = original; }
+});
+test('null router errors preserve rate limits and retry information', async () => {
+  const original = global.fetch;
+  global.fetch = async () => new Response('null', { status: 429, headers: { 'Retry-After': '15' } });
+  try {
+    const res = response(); await handler(request, res);
+    assert.equal(res.statusCode, 429);
+    assert.equal(res.headers['Retry-After'], '15');
+  } finally { global.fetch = original; }
+});

@@ -1,7 +1,6 @@
 const DEFAULT_WORKER_URL = 'https://liefantidia2-ai-router.light06120602.workers.dev/generate-recipe';
-// Allow the router to try alternative providers (each provider can take 25 seconds).
-// The Vercel function budget is 180s; the browser waits 135s.
 export const UPSTREAM_TIMEOUT_MS = 120000;
+export const HIGH_ACCURACY_TIMEOUT_MS = 165000;
 
 // Kept on the server so older clients also receive the recipe-quality requirements.
 export const RECIPE_REQUIREMENTS = `【レシピの品質条件】
@@ -29,8 +28,13 @@ export default async function handler(request, response) {
   }
   const ingredients = typeof request.body?.ingredients === 'string' ? request.body.ingredients.trim() : '';
   const constraints = typeof request.body?.constraints === 'string' ? request.body.constraints.trim() : '';
+  const mode = request.body?.mode === 'high' ? 'high' : 'normal';
+  if (request.body?.mode !== undefined && !['normal', 'high'].includes(request.body.mode)) {
+    return response.status(400).json({ error: '生成モードが正しくありません。' });
+  }
   if (!ingredients) return response.status(400).json({ error: '食材が入力されていません。' });
   if (ingredients.length > 2000 || constraints.length > 4000) return response.status(413).json({ error: '入力が長すぎます。' });
+
   let endpoint;
   try {
     endpoint = new URL(process.env.COOKAI_WORKER_URL || DEFAULT_WORKER_URL);
@@ -38,23 +42,27 @@ export default async function handler(request, response) {
   } catch {
     return response.status(503).json({ error: 'AI接続先が正しく設定されていません。' });
   }
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeoutMs = mode === 'high' ? HIGH_ACCURACY_TIMEOUT_MS : UPSTREAM_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const upstream = await fetch(endpoint, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth },
-      body: JSON.stringify({ ingredients, constraints: [constraints, RECIPE_REQUIREMENTS].filter(Boolean).join('\n\n') }), signal: controller.signal
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth },
+      body: JSON.stringify({ ingredients, constraints: [constraints, RECIPE_REQUIREMENTS].filter(Boolean).join('\n\n'), mode }),
+      signal: controller.signal
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      const status = [400, 401, 413, 429, 503, 504].includes(upstream.status) ? upstream.status : 502;
+      const status = [400, 401, 403, 413, 429, 503, 504].includes(upstream.status) ? upstream.status : 502;
       const retryAfter = upstream.headers.get('retry-after');
       if (retryAfter && /^\d{1,6}$/.test(retryAfter)) response.setHeader('Retry-After', retryAfter);
       return response.status(status).json({ error: String(payload.error || 'AIサーバーでエラーが発生しました。').slice(0, 220) });
     }
     const recipe = typeof payload.recipe === 'string' ? payload.recipe.trim() : '';
     if (!recipe) return response.status(502).json({ error: 'AIから有効なレシピが返りませんでした。' });
-    return response.status(200).json({ recipe });
+    return response.status(200).json({ recipe, mode: payload.mode || mode });
   } catch (error) {
     if (controller.signal.aborted) return response.status(504).json({ error: 'AIの応答に時間がかかっています。少し待ってから再試行してください。' });
     console.error('CookAi upstream request failed', { code: error?.code || error?.name || 'UNKNOWN' });

@@ -26,50 +26,41 @@
     <section class="hero">
       <p class="eyebrow">今日の一皿をつくる</p>
       <h1>使いたい食材から、今日のレシピ。</h1>
-      <p class="lead">手元の食材と、あなたの調理スタイルを伝えるだけ。CookAiが日本語で、今つくれるレシピをひとつ提案します。</p>
+      <p class="lead">食材を入力して、レシピを生成。好みや予算も指定できます。</p>
     </section>
 
     <section class="workspace" aria-label="レシピ生成">
-      <div id="usageStatus" role="status">利用残数を確認しています…</div><button type="button" id="refreshUsage">残数を更新</button>
-      <form id="recipeForm" class="composer-card">
+      <div class="usage-bar"><div id="usageStatus" role="status">利用残数を確認しています…</div><button type="button" id="refreshUsage">残数を更新</button></div>
+      <form id="recipeForm" class="composer-card"><section class="android-section">
         <div class="section-heading">
           <span class="section-number">01</span>
           <div><h2>使いたい食材</h2><p>冷蔵庫にあるものを、カンマや改行で入力してください。</p></div>
         </div>
 
         <label class="field-label" for="ingredients">食材</label>
-        <textarea id="ingredients" maxlength="1600" rows="5" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
+        <textarea id="ingredients" maxlength="1600" rows="3" placeholder="例：鶏むね肉、キャベツ、卵、しめじ" required></textarea>
         <div class="field-meta">
           <label class="check-row"><input id="useAll" type="checkbox" checked><span>入力した食材をすべて使う</span></label>
           <span id="ingredientCount">0 / 1600</span>
         </div>
 
-        <div class="section-heading compact">
+        </section><section class="android-section"><div class="section-heading compact">
           <span class="section-number">02</span>
           <div><h2>今回のレシピ</h2><p>指定しない項目はAIにおまかせできます。</p></div>
         </div>
 
         <div class="select-grid">
-          <label>主食の分類<select id="type"><option>特になし</option><option>ご飯類</option><option>麺類</option><option>パン類</option><option>その他</option></select></label>
+          <label>料理の種類<select id="type"><option>特になし</option><option>ご飯類</option><option>麺類</option><option>パン類</option><option>その他</option></select></label>
           <label>難易度<select id="difficulty"><option>指定なし</option><option>初心者 (簡単)</option><option>中級者 (普通)</option><option>上級者 (挑戦的)</option></select></label>
           <label>ジャンル<select id="genre"><option>指定なし</option><option>和食</option><option>洋食</option><option>中華</option><option>エスニック</option><option>創作・無国籍</option></select></label>
           <label>調理時間<select id="time"><option>指定なし</option><option>15分以内 (速攻)</option><option>30分以内 (標準)</option><option>1時間以内 (じっくり)</option><option>なし</option></select></label>
           <label>食事スタイル<select id="diet"><option>指定なし</option><option>ベジタリアン</option><option>低カロリー・ダイエット</option><option>低糖質・ケトジェニック</option><option>辛さ控えめ</option></select></label>
         </div>
 
-        <details class="preferences" id="preferencesPanel">
-          <summary><span>いつもの調理設定</span><small id="preferencesSummary">未登録 · 設定すると次回から入力不要</small></summary>
-          <div class="preferences-grid">
-            <label>避ける食材・アレルギー<textarea id="allergies" rows="2" maxlength="400" placeholder="例：えび、落花生"></textarea></label>
-            <label>使える調味料<textarea id="seasonings" rows="2" maxlength="400" placeholder="例：塩、しょうゆ、みそ、砂糖"></textarea></label>
-            <label>使える調理方法・器具<textarea id="methods" rows="2" maxlength="400" placeholder="例：フライパン、電子レンジ、炊飯器"></textarea></label>
-          </div>
-          <label><input type="checkbox" id="highAccuracy"> 高精度モード（ログインが必要）</label>
-          <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
-        </details>
+        </section>
 
-        <label class="field-label" for="instructions">追加指示</label><textarea id="instructions" rows="3" maxlength="2000" placeholder="例：子ども向け、洗い物を少なく、辛くしない"></textarea>
-        <div id="formError" class="form-error" role="alert" hidden></div>
+        <section class="android-section"><label class="field-label" for="instructions">追加指示</label><textarea id="instructions" rows="3" maxlength="2000" placeholder="例：子ども向け、洗い物を少なく、辛くしない"></textarea>
+        </section><div id="formError" class="form-error" role="alert" hidden></div>
         <div class="generate-row">
           <button id="generateButton" class="primary-button" type="submit"><span class="button-label">レシピを生成する</span><span class="button-arrow" aria-hidden="true">↗</span></button>
           <button id="stopButton" class="secondary-button" type="button" hidden>生成を停止</button>
@@ -100,6 +91,16 @@
   </aside>
 
   <footer><span>CookAi Web</span><a href="/privacy">プライバシー</a><span>AI生成結果は参考情報です</span></footer>
+  <dialog id="settingsDialog" aria-label="設定"><div class="drawer-head"><h2>設定</h2><button type="button" id="settingsClose" class="icon-button">閉じる</button></div><div id="settingsUsage"></div><details class="preferences" id="preferencesPanel" open>
+          <summary><span>いつもの調理設定</span><small id="preferencesSummary">未登録 · 設定すると次回から入力不要</small></summary>
+          <div class="preferences-grid">
+            <label>避ける食材・アレルギー<textarea id="allergies" rows="2" maxlength="400" placeholder="例：えび、落花生"></textarea></label>
+            <label>使える調味料<textarea id="seasonings" rows="2" maxlength="400" placeholder="例：塩、しょうゆ、みそ、砂糖"></textarea></label>
+            <label>使える調理方法・器具<textarea id="methods" rows="2" maxlength="400" placeholder="例：フライパン、電子レンジ、炊飯器"></textarea></label>
+          </div>
+          <label><input type="checkbox" id="highAccuracy"> 高精度モード（ログインが必要）</label>
+          <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
+        </details><button type="button" id="settingsAccount" class="secondary-button">アカウント・履歴の同期</button></dialog>
   <dialog id="accountDialog" aria-labelledby="accountHeading">
     <div class="drawer-head"><h2 id="accountHeading">アカウント</h2><button id="accountClose" class="icon-button" type="button">閉じる</button></div>
     <p id="accountStatus">接続を確認しています</p>

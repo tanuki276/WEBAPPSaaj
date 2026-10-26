@@ -24,7 +24,7 @@ window.CookAccount = (() => {
     try {
       const response = await fetch(url, { ...options, signal: abort.signal });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error?.message || data.error?.status || 'NETWORK_ERROR');
+      if (!response.ok) { const error = new Error(data.error?.message || data.error?.status || 'NETWORK_ERROR'); error.status = response.status; throw error; }
       return data;
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('NETWORK_TIMEOUT');
@@ -165,7 +165,6 @@ window.CookAccount = (() => {
   async function login(email, password) {
     if (!session?.uid) await ensure();
     if (!guest() && !needsLogin) throw new Error('ALREADY_SIGNED_IN');
-    await sync();
     const source = session;
     const destination = credentials(await authRequest('signInWithPassword', { email, password, returnSecureToken: true }));
     // Keep the guest session/cache until every write to the destination has succeeded.
@@ -197,7 +196,8 @@ window.CookAccount = (() => {
     if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(text)) return 'メールアドレスまたはパスワードを確認してください。';
     if (/WEAK_PASSWORD/.test(text)) return '6文字以上のパスワードを入力してください。';
     if (/TOO_MANY_ATTEMPTS/.test(text)) return '少し時間をおいて再試行してください。';
-    if (/PERMISSION_DENIED/.test(text)) return '履歴を同期できません。保存権限の設定を管理者にご確認ください。端末の履歴は残っています。';
+    if (/NOT_FOUND|does not exist/.test(text)) return '履歴の保存先が見つかりません。ページを再読み込みして再試行してください。端末の履歴は残っています。';
+    if (/PERMISSION_DENIED|Missing or insufficient permissions/.test(text)) return '履歴を同期できません。保存権限の設定を管理者にご確認ください。端末の履歴は残っています。';
     if (/INVALID_EMAIL/.test(text)) return 'メールアドレスを確認してください。';
     return '通信または認証処理を完了できませんでした。接続を確認して再試行してください。端末の履歴は残っています。';
   }

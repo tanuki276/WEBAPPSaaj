@@ -17,17 +17,18 @@ function fixture({ failWrites = false } = {}) {
     });
     return elements.get(id);
   };
-  const next = { localId: 'account', email: 'cook@example.com', idToken: 'account-token', refreshToken: 'r2', expiresIn: '3600' };
+  const destination = { localId: 'account', email: 'cook@example.com', idToken: 'account-token', refreshToken: 'r2', expiresIn: '3600' };
+  const linked = { localId: 'guest', email: 'cook@example.com', idToken: 'linked-token', refreshToken: 'linked-refresh', expiresIn: '3600' };
   const context = vm.createContext({ console, Date, JSON, Promise, Error, URLSearchParams, encodeURIComponent, AbortController,
     setTimeout, clearTimeout, crypto: { randomUUID: () => 'new-recipe' }, Event: class {},
     document: { getElementById: element, querySelectorAll: () => buttons, addEventListener: (name, fn) => callbacks[name] = fn },
     localStorage: { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) },
     fetch: async (url, options = {}) => {
       const body = options.body && String(options.body).startsWith('{') ? JSON.parse(options.body) : null;
-      if (url.includes('accounts:update')) return { ok: true, json: async () => ({ ...next, localId: 'guest' }) };
+      if (url.includes('accounts:update')) return { ok: true, json: async () => linked };
       if (url.includes('signInWithPassword')) {
         if (body.password === 'wrong') return { ok: false, json: async () => ({ error: { message: 'INVALID_LOGIN_CREDENTIALS' } }) };
-        return { ok: true, json: async () => next };
+        return { ok: true, json: async () => destination };
       }
       if (url.endsWith(':commit')) {
         if (failWrites) return { ok: false, json: async () => ({ error: { message: 'PERMISSION_DENIED' } }) };

@@ -24,7 +24,7 @@ window.CookAccount = (() => {
     try {
       const response = await fetch(url, { ...options, signal: abort.signal });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error?.message || data.error?.status || 'NETWORK_ERROR');
+      if (!response.ok) throw new Error(data.error?.message || data.error?.status || data.error || 'NETWORK_ERROR');
       return data;
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('NETWORK_TIMEOUT');
@@ -96,7 +96,7 @@ window.CookAccount = (() => {
   function fields(item) {
     return { recipeTitle: { stringValue: item.title || 'CookAi レシピ' },
       ingredientsWithUsage: { stringValue: item.ingredients || '' }, allConstraints: { stringValue: item.constraints || '' },
-      recipeContent: { stringValue: item.recipe }, timestamp: { integerValue: String(item.createdAt) } };
+      recipeContent: { stringValue: item.recipe || '' }, timestamp: { integerValue: String(item.createdAt || Date.now()) } };
   }
   async function upload(items, current) {
     for (let i = 0; i < items.length; i += 100) {
@@ -105,15 +105,7 @@ window.CookAccount = (() => {
       })) }) }, current);
     }
   }
-  async function sync() {
-    await ensure();
-    if (guest()) return;
-    const current = session;
-    const local = history();
-    const unsaved = local.filter(item => !item.cloudSaved);
-    await upload(unsaved, current);
-    // Record acknowledgements before reading; retries cannot resurrect previously synced, deleted recipes.
-    writeCache(current.uid, local.map(item => ({ ...item, cloudSaved: true })));
+  async function readCloud(current) {
     let token = '', all = [];
     do {
       const query = new URLSearchParams({ pageSize: '100' });
@@ -127,8 +119,17 @@ window.CookAccount = (() => {
       }));
       token = data.nextPageToken || '';
     } while (token);
+    return all;
+  }
+  async function sync() {
+    await ensure();
+    const current = session;
+    const local = history();
+    const unsaved = local.filter(item => !item.cloudSaved);
+    await upload(unsaved, current);
+    writeCache(current.uid, local.map(item => ({ ...item, cloudSaved: true })));
+    const all = await readCloud(current);
     if (session.uid !== current.uid) return;
-    // Include recipes generated while the read was in flight.
     const newer = history().filter(item => !item.cloudSaved && !unsaved.some(old => old.id === item.id));
     writeCache(current.uid, [...newer, ...all].sort((a, b) => b.createdAt - a.createdAt));
     changed();
@@ -137,41 +138,42 @@ window.CookAccount = (() => {
     await ensure();
     const entry = { ...item, id: crypto.randomUUID(), cloudSaved: false };
     writeCache(session.uid, [entry, ...history()]);
-    if (!guest()) {
-      await upload([entry], session);
-      writeCache(session.uid, history().map(x => x.id === entry.id ? { ...x, cloudSaved: true } : x));
-    }
+    await upload([entry], session);
+    writeCache(session.uid, history().map(x => x.id === entry.id ? { ...x, cloudSaved: true } : x));
   }
   async function clear() {
     await ensure();
-    if (!guest()) {
-      // Read the complete account history before deleting, including Android recipes.
-      await sync();
-      const items = history();
-      for (let i = 0; i < items.length; i += 100) await cloud(':commit', { method: 'POST', body: JSON.stringify({
-        writes: items.slice(i, i + 100).map(item => ({ delete: `${ROOT}${path(session.uid)}/${encodeURIComponent(documentId(item))}` }))
-      }) });
-    }
+    await sync();
+    const items = history();
+    for (let i = 0; i < items.length; i += 100) await cloud(':commit', { method: 'POST', body: JSON.stringify({
+      writes: items.slice(i, i + 100).map(item => ({ delete: `${ROOT}${path(session.uid)}/${encodeURIComponent(documentId(item))}` }))
+    }) });
     writeCache(session.uid, []);
     changed();
   }
   async function register(email, password) {
     await ensure();
     if (!guest()) throw new Error('ALREADY_SIGNED_IN');
-    const result = await authRequest('update', { idToken: session.idToken, email, password, returnSecureToken: true });
-    persist(credentials(result, session));
+    // Ensure all guest history is already safely stored under this UID before linking credentials.
+    await sync();
+    const previous = session;
+    const result = await authRequest('update', { idToken: previous.idToken, email, password, returnSecureToken: true });
+    persist(credentials(result, previous));
     changed();
     await sync();
   }
   async function login(email, password) {
     if (!session?.uid) await ensure();
     if (!guest() && !needsLogin) throw new Error('ALREADY_SIGNED_IN');
+    // Preserve and fully sync the guest session before authenticating the destination.
+    if (guest()) await sync();
     const source = session;
     const destination = credentials(await authRequest('signInWithPassword', { email, password, returnSecureToken: true }));
-    // Keep the guest session/cache until every write to the destination has succeeded.
     if (source.email && destination.uid !== source.uid) throw new Error('LOGIN_SAME_ACCOUNT');
-    const items = source.email ? history().filter(item => !item.cloudSaved)
-      : history().map(item => ({ ...item, cloudId: `guest_${source.uid}_${documentId(item)}` }));
+    const sourceItems = history();
+    const items = source.email ? sourceItems.filter(item => !item.cloudSaved)
+      : sourceItems.map(item => ({ ...item, cloudId: `guest_${source.uid}_${documentId(item)}` }));
+    // Do not replace the guest session until every destination write has completed.
     await upload(items, destination);
     if (!localStorage.getItem(prefKey(destination.uid))) {
       const prefs = localStorage.getItem(prefKey(source.uid));
@@ -183,23 +185,42 @@ window.CookAccount = (() => {
   }
   async function logout() {
     await ensure();
-    await sync(); // Keep pending history accessible if a cloud write fails.
-    // Obtain the new guest session before replacing the signed-in account.
+    await sync();
     persist(credentials(await authRequest('signUp', { returnSecureToken: true })));
     changed();
+    await sync();
+  }
+  async function usage() {
+    let current = await ensure();
+    async function request(s) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20000);
+      try {
+        return await fetch('/api/usage', { headers: { Authorization: `Bearer ${s.idToken}` }, signal: controller.signal });
+      } finally { clearTimeout(timer); }
+    }
+    let response = await request(current);
+    if (response.status === 401 && current.refreshToken) {
+      current = await refresh(current);
+      if (session.uid === current.uid) persist(current);
+      response = await request(current);
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `USAGE_HTTP_${response.status}`);
+    return data;
   }
   function message(error) {
     const text = String(error?.message || '');
     if (/LOGIN_SAME_ACCOUNT/.test(text)) return '現在のアカウントと同じメールアドレスでログインし直してください。';
     if (/INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|USER_DISABLED|USER_NOT_FOUND|INVALID_ID_TOKEN/.test(text)) return 'ログインの有効期限が切れました。同じメールアドレスでログインし直してください。';
     if (/EMAIL_EXISTS/.test(text)) return '登録済みのメールアドレスです。「ログイン」を選んでください。';
-    if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED/.test(text)) return 'メールログインが有効になっていません。管理者にお問い合わせください。';
-    if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(text)) return 'メールアドレスまたはパスワードを確認してください。';
+    if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED/.test(text)) return 'Firebaseでメール/パスワードログインが有効になっていません。';
+    if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(text)) return 'メールアドレスまたはパスワードが正しくありません。';
     if (/WEAK_PASSWORD/.test(text)) return '6文字以上のパスワードを入力してください。';
     if (/TOO_MANY_ATTEMPTS/.test(text)) return '少し時間をおいて再試行してください。';
-    if (/PERMISSION_DENIED/.test(text)) return '履歴を同期できません。保存権限の設定を管理者にご確認ください。端末の履歴は残っています。';
+    if (/PERMISSION_DENIED/.test(text)) return '履歴を同期できません。保存権限を確認してください。ゲスト履歴は残っています。';
     if (/INVALID_EMAIL/.test(text)) return 'メールアドレスを確認してください。';
-    return '通信または認証処理を完了できませんでした。接続を確認して再試行してください。端末の履歴は残っています。';
+    return '通信または認証処理を完了できませんでした。接続を確認して再試行してください。履歴は残っています。';
   }
   function render() {
     if (!$('accountStatus')) return;
@@ -209,6 +230,11 @@ window.CookAccount = (() => {
     $('syncButton').hidden = guest();
     document.querySelectorAll('[data-account-action]').forEach(button => button.disabled = busy);
     $('generateButton').disabled = busy || !!window.cookaiGenerating;
+    const high = $('highAccuracy');
+    if (high) {
+      if (guest()) high.checked = false;
+      high.disabled = guest() || busy || !!window.cookaiGenerating;
+    }
     $('accountProgress').hidden = !busy;
     $('accountClose').disabled = busy;
   }
@@ -227,7 +253,7 @@ window.CookAccount = (() => {
       if (name === 'sync') await serialized(sync);
       if (name === 'reset') await authRequest('sendOobCode', { requestType: 'PASSWORD_RESET', email });
       $('accountPassword').value = '';
-      $('accountMessage').textContent = { register: '登録しました。ゲストの履歴を保存しました。', login: 'ログインしました。履歴を引き継ぎました。', logout: 'ログアウトしました。履歴はアカウントに保存されています。', sync: '履歴を同期しました。', reset: '登録されている場合、再設定メールが届きます。' }[name];
+      $('accountMessage').textContent = { register: '登録しました。ゲストの履歴を引き継ぎました。', login: 'ログインしました。以前の履歴とゲスト履歴をまとめました。', logout: 'ログアウトしました。履歴はアカウントに保存されています。', sync: '履歴を同期しました。', reset: '登録されている場合、再設定メールが届きます。' }[name];
     } catch (error) { $('accountMessage').textContent = message(error); }
     finally { busy = false; render(); }
   }
@@ -236,10 +262,11 @@ window.CookAccount = (() => {
     $('accountClose').onclick = () => $('accountDialog').close();
     document.querySelectorAll('[data-account-action]').forEach(button => button.onclick = () => action(button.dataset.accountAction));
     $('accountDialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
-    ensure().then(() => { changed(); if (!guest()) return serialized(sync); }).catch(error => {
+    ensure().then(() => { changed(); return serialized(sync); }).catch(error => {
       $('accountMessage').textContent = message(error);
     });
   });
-  return { ensure, refresh: () => ensure(true), history, preferencesKey, save: item => serialized(() => save(item)), clear: () => serialized(clear), sync: () => serialized(sync), guest, message,
+  return { ensure, refresh: () => ensure(true), history, preferencesKey, save: item => serialized(() => save(item)),
+    clear: () => serialized(clear), sync: () => serialized(sync), usage: () => serialized(usage), guest, message,
     busy: () => busy };
 })();

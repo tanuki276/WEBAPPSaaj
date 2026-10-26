@@ -30,6 +30,7 @@
     </section>
 
     <section class="workspace" aria-label="レシピ生成">
+      <div id="usageStatus" role="status">利用残数を確認しています…</div><button type="button" id="refreshUsage">残数を更新</button>
       <form id="recipeForm" class="composer-card">
         <div class="section-heading">
           <span class="section-number">01</span>
@@ -63,6 +64,7 @@
             <label>使える調味料<textarea id="seasonings" rows="2" maxlength="400" placeholder="例：塩、しょうゆ、みそ、砂糖"></textarea></label>
             <label>使える調理方法・器具<textarea id="methods" rows="2" maxlength="400" placeholder="例：フライパン、電子レンジ、炊飯器"></textarea></label>
           </div>
+          <label><input type="checkbox" id="highAccuracy"> 高精度モード（ログインが必要）</label>
           <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
         </details>
 

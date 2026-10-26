@@ -30,7 +30,7 @@ export default async function handler(request, response) {
   try {
     const upstream = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth },
-      body: JSON.stringify({ ingredients, constraints }), signal: controller.signal
+      body: JSON.stringify({ ingredients, constraints, mode: request.body?.mode === 'high' ? 'high' : 'normal' }), signal: controller.signal
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {

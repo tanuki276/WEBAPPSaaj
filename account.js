@@ -1,7 +1,7 @@
 /* Firebase's public API key identifies the project; authorization is enforced by Auth and Firestore Rules. */
 window.CookAccount = (() => {
   const API_KEY = 'AIzaSyDGlT5oWGQIUmJQLhfINko1kHHEZlGFIhI';
-  const ROOT = 'projects/liefantidia2/databases/(default)/documents';
+  const ROOT = 'projects/liefantidia2/databases/default/documents';
   const BASE = `https://firestore.googleapis.com/v1/${ROOT}`;
   const $ = id => document.getElementById(id);
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
@@ -24,7 +24,7 @@ window.CookAccount = (() => {
     try {
       const response = await fetch(url, { ...options, signal: abort.signal });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error?.message || data.error?.status || 'NETWORK_ERROR');
+      if (!response.ok) { const error = new Error(data.error?.message || data.error?.status || 'NETWORK_ERROR'); error.status = response.status; throw error; }
       return data;
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('NETWORK_TIMEOUT');
@@ -107,7 +107,6 @@ window.CookAccount = (() => {
   }
   async function sync() {
     await ensure();
-    if (guest()) return;
     const current = session;
     const local = history();
     const unsaved = local.filter(item => !item.cloudSaved);
@@ -123,7 +122,7 @@ window.CookAccount = (() => {
         const f = doc.fields || {}, id = doc.name.split('/').pop();
         return { id, cloudId: id, cloudSaved: true, title: f.recipeTitle?.stringValue || 'CookAi レシピ',
           ingredients: f.ingredientsWithUsage?.stringValue || '', constraints: f.allConstraints?.stringValue || '',
-          recipe: f.recipeContent?.stringValue || '', createdAt: Number(f.timestamp?.integerValue || 0) };
+          recipe: f.recipeContent?.stringValue || '', createdAt: Number(f.timestamp?.integerValue || Date.parse(f.timestamp?.timestampValue || '') || 0) };
       }));
       token = data.nextPageToken || '';
     } while (token);
@@ -137,7 +136,7 @@ window.CookAccount = (() => {
     await ensure();
     const entry = { ...item, id: crypto.randomUUID(), cloudSaved: false };
     writeCache(session.uid, [entry, ...history()]);
-    if (!guest()) {
+    {
       await upload([entry], session);
       writeCache(session.uid, history().map(x => x.id === entry.id ? { ...x, cloudSaved: true } : x));
     }
@@ -197,7 +196,8 @@ window.CookAccount = (() => {
     if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(text)) return 'メールアドレスまたはパスワードを確認してください。';
     if (/WEAK_PASSWORD/.test(text)) return '6文字以上のパスワードを入力してください。';
     if (/TOO_MANY_ATTEMPTS/.test(text)) return '少し時間をおいて再試行してください。';
-    if (/PERMISSION_DENIED/.test(text)) return '履歴を同期できません。保存権限の設定を管理者にご確認ください。端末の履歴は残っています。';
+    if (/NOT_FOUND|does not exist/.test(text)) return '履歴の保存先が見つかりません。ページを再読み込みして再試行してください。端末の履歴は残っています。';
+    if (/PERMISSION_DENIED|Missing or insufficient permissions/.test(text)) return '履歴を同期できません。保存権限の設定を管理者にご確認ください。端末の履歴は残っています。';
     if (/INVALID_EMAIL/.test(text)) return 'メールアドレスを確認してください。';
     return '通信または認証処理を完了できませんでした。接続を確認して再試行してください。端末の履歴は残っています。';
   }

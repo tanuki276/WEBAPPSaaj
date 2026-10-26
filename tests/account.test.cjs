@@ -42,7 +42,7 @@ function fixture({ failWrites = false } = {}) {
   context.dispatchEvent = () => {};
   vm.runInContext(fs.readFileSync('account.js', 'utf8'), context);
   callbacks.DOMContentLoaded();
-  return { api: context.CookAccount, map, commits, element, buttons,
+  return { api: context.CookAccount, map, commits, cloudDocs, element, buttons,
     action: async name => {
       element('accountEmail').value = 'cook@example.com'; element('accountPassword').value = 'TestPassword123';
       await buttons.find(button => button.dataset.accountAction === name).onclick();
@@ -77,4 +77,21 @@ test('a wrong password cannot replace the guest session or upload history', asyn
   assert.equal(JSON.parse(f.map.get('cookai.auth')).uid, 'guest');
   assert.equal(f.commits.length, 0);
   assert.equal(f.api.history().length, 1);
+});
+
+test('shared Android history accepts Firestore timestamps and preserves chronological order', async () => {
+  const f = fixture(); await f.api.ensure(); await f.action('login');
+  const dates = [
+    ['native', { timestampValue: '2026-10-26T10:00:00Z' }, Date.parse('2026-10-26T10:00:00Z')],
+    ['numeric', { integerValue: '1000' }, 1000],
+    ['double', { doubleValue: 500 }, 500],
+    ['invalid', { timestampValue: 'invalid' }, 0],
+  ];
+  for (const [id, timestamp] of dates) f.cloudDocs.set(id, {
+    name: `projects/demo/databases/(default)/documents/history/${id}`,
+    fields: { recipeTitle: { stringValue: id }, recipeContent: { stringValue: 'レシピ' }, timestamp }
+  });
+  await f.api.sync();
+  for (const [id, , expected] of dates) assert.equal(f.api.history().find(x => x.id === id).createdAt, expected);
+  assert.equal(f.api.history()[0].id, 'native');
 });

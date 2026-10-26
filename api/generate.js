@@ -11,7 +11,7 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method not allowed' });
   }
   const auth = String(request.headers.authorization || '');
-  if (!auth.startsWith('Bearer ') || auth.length > 5000) {
+  if (!auth.startsWith('Bearer ') || !auth.slice(7).trim() || auth.length > 5000) {
     return response.status(401).json({ error: '認証が必要です。ページを再読み込みしてください。' });
   }
   const ingredients = typeof request.body?.ingredients === 'string' ? request.body.ingredients.trim() : '';
@@ -37,9 +37,9 @@ export default async function handler(request, response) {
       const status = [400, 401, 413, 429, 503, 504].includes(upstream.status) ? upstream.status : 502;
       const retryAfter = upstream.headers.get('retry-after');
       if (retryAfter && /^\d{1,6}$/.test(retryAfter)) response.setHeader('Retry-After', retryAfter);
-      return response.status(status).json({ error: String(payload.error || 'AIサーバーでエラーが発生しました。').slice(0, 220) });
+      return response.status(status).json({ error: String(payload?.error || 'AIサーバーでエラーが発生しました。').slice(0, 220) });
     }
-    const recipe = typeof payload.recipe === 'string' ? payload.recipe.trim() : '';
+    const recipe = typeof payload?.recipe === 'string' ? payload?.recipe.trim() : '';
     if (!recipe) return response.status(502).json({ error: 'AIから有効なレシピが返りませんでした。' });
     return response.status(200).json({ recipe });
   } catch (error) {

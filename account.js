@@ -105,6 +105,12 @@ window.CookAccount = (() => {
       })) }) }, current);
     }
   }
+  function historyTimestamp(value) {
+    const timestamp = value?.timestampValue !== undefined
+      ? Date.parse(value.timestampValue)
+      : Number(value?.integerValue ?? value?.doubleValue ?? 0);
+    return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : 0;
+  }
   async function sync() {
     await ensure();
     if (guest()) return;
@@ -123,7 +129,7 @@ window.CookAccount = (() => {
         const f = doc.fields || {}, id = doc.name.split('/').pop();
         return { id, cloudId: id, cloudSaved: true, title: f.recipeTitle?.stringValue || 'CookAi レシピ',
           ingredients: f.ingredientsWithUsage?.stringValue || '', constraints: f.allConstraints?.stringValue || '',
-          recipe: f.recipeContent?.stringValue || '', createdAt: Number(f.timestamp?.integerValue || 0) };
+          recipe: f.recipeContent?.stringValue || '', createdAt: historyTimestamp(f.timestamp) };
       }));
       token = data.nextPageToken || '';
     } while (token);

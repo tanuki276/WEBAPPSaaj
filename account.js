@@ -1,7 +1,7 @@
 /* Firebase's public API key identifies the project; authorization is enforced by Auth and Firestore Rules. */
 window.CookAccount = (() => {
   const API_KEY = 'AIzaSyDGlT5oWGQIUmJQLhfINko1kHHEZlGFIhI';
-  const ROOT = 'projects/liefantidia2/databases/(default)/documents';
+  const ROOT = 'projects/liefantidia2/databases/default/documents';
   const BASE = `https://firestore.googleapis.com/v1/${ROOT}`;
   const $ = id => document.getElementById(id);
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
@@ -107,7 +107,6 @@ window.CookAccount = (() => {
   }
   async function sync() {
     await ensure();
-    if (guest()) return;
     const current = session;
     const local = history();
     const unsaved = local.filter(item => !item.cloudSaved);
@@ -123,7 +122,7 @@ window.CookAccount = (() => {
         const f = doc.fields || {}, id = doc.name.split('/').pop();
         return { id, cloudId: id, cloudSaved: true, title: f.recipeTitle?.stringValue || 'CookAi レシピ',
           ingredients: f.ingredientsWithUsage?.stringValue || '', constraints: f.allConstraints?.stringValue || '',
-          recipe: f.recipeContent?.stringValue || '', createdAt: Number(f.timestamp?.integerValue || 0) };
+          recipe: f.recipeContent?.stringValue || '', createdAt: Number(f.timestamp?.integerValue || Date.parse(f.timestamp?.timestampValue || '') || 0) };
       }));
       token = data.nextPageToken || '';
     } while (token);
@@ -137,7 +136,7 @@ window.CookAccount = (() => {
     await ensure();
     const entry = { ...item, id: crypto.randomUUID(), cloudSaved: false };
     writeCache(session.uid, [entry, ...history()]);
-    if (!guest()) {
+    {
       await upload([entry], session);
       writeCache(session.uid, history().map(x => x.id === entry.id ? { ...x, cloudSaved: true } : x));
     }
@@ -166,6 +165,7 @@ window.CookAccount = (() => {
   async function login(email, password) {
     if (!session?.uid) await ensure();
     if (!guest() && !needsLogin) throw new Error('ALREADY_SIGNED_IN');
+    await sync();
     const source = session;
     const destination = credentials(await authRequest('signInWithPassword', { email, password, returnSecureToken: true }));
     // Keep the guest session/cache until every write to the destination has succeeded.

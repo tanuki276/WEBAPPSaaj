@@ -64,9 +64,15 @@
             <label>使える調理方法・器具<textarea id="methods" rows="2" maxlength="400" placeholder="例：フライパン、電子レンジ、炊飯器"></textarea></label>
           </div>
           <button id="savePreferences" class="text-button" type="button">調理設定を保存</button>
+          <hr>
+          <p><strong>本日の利用上限</strong></p>
+          <p id="usageStatus" class="account-help" aria-live="polite">本日の利用状況を確認しています…</p>
+          <button id="refreshUsage" class="text-button" type="button">利用状況を更新</button>
         </details>
 
         <label class="field-label" for="instructions">追加指示</label><textarea id="instructions" rows="3" maxlength="2000" placeholder="例：子ども向け、洗い物を少なく、辛くしない"></textarea>
+        <label class="check-row"><input id="highAccuracy" type="checkbox" disabled><span data-high-label>高精度モード（ログイン後に利用可能）</span></label>
+        <p class="privacy-note">高精度モードは条件をより厳密に確認し、生成後にもう一度レビューします。通常より時間がかかります。</p>
         <div id="formError" class="form-error" role="alert" hidden></div>
         <div class="generate-row">
           <button id="generateButton" class="primary-button" type="submit"><span class="button-label">レシピを生成する</span><span class="button-arrow" aria-hidden="true">↗</span></button>
@@ -102,13 +108,13 @@
     <div class="drawer-head"><h2 id="accountHeading">アカウント</h2><button id="accountClose" class="icon-button" type="button">閉じる</button></div>
     <p id="accountStatus">接続を確認しています</p>
     <div id="accountCredentials">
-      <p class="account-help">登録するとゲストの履歴を保存できます。登録済みの方はAndroid版と同じメールアドレスでログインしてください。</p>
+      <p class="account-help">ゲスト履歴もクラウドへ保存します。登録済みの方はAndroid版と同じメールアドレスでログインすると、以前の履歴と現在のゲスト履歴をまとめて利用できます。</p>
       <label for="accountEmail">メールアドレス</label><input id="accountEmail" type="email" autocomplete="email" required maxlength="254">
       <label for="accountPassword">パスワード</label><input id="accountPassword" type="password" autocomplete="current-password" required>
       <button class="primary-button" type="button" data-account-action="login">ログインして履歴を引き継ぐ</button>
       <button class="secondary-button" type="button" data-account-action="register">新規登録して履歴を保存</button>
       <button class="text-button" type="button" data-account-action="reset">パスワードを忘れた場合</button>
-      <p class="account-help">新規登録のパスワードは6文字以上です。未登録のままブラウザのデータを削除すると、ゲスト履歴は復元できません。<a href="/privacy">プライバシー</a></p>
+      <p class="account-help">新規登録のパスワードは6文字以上です。未登録のままブラウザの認証データを削除した場合、以前の匿名UIDには戻れません。<a href="/privacy">プライバシー</a></p>
     </div>
     <button id="syncButton" class="primary-button" type="button" data-account-action="sync" hidden>履歴を同期する</button>
     <button id="logoutButton" class="secondary-button" type="button" data-account-action="logout" hidden>ログアウト</button>
